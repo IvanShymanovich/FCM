@@ -1,12 +1,21 @@
 module Main (main) where
 
 import System.Console.GetOpt
-import System.Environment(getArgs, getProgName)
-import Data.Maybe ( fromMaybe )
+import System.Environment( getArgs, getProgName )
+import Data.Maybe ( fromMaybe, isNothing, fromJust )
+--import ParserCSV ( parseCSV )
+
+-- from cassava
+import Data.Csv
+import Lib
+import FCM.ParserCSV 
 
 data Options = Options {
     optInput                :: Maybe FilePath
     , optOutput             :: Maybe FilePath
+    , optCount              :: Int
+    , optPrecision          :: Double
+    , optMethod             :: Char
     , optSeparator          :: String
     , optSkipHeadLine       :: Bool
     , optSkipFirstColumn    :: Bool
@@ -16,6 +25,9 @@ data Options = Options {
 defaultOptions = Options {
     optInput                = Nothing
     , optOutput             = Nothing
+    , optCount              = 5
+    , optPrecision          = 0.0001
+    , optMethod             = 'H'
     , optSeparator          = ","
     , optSkipHeadLine       = False
     , optSkipFirstColumn    = False
@@ -25,14 +37,23 @@ defaultOptions = Options {
 options :: [OptDescr (Options -> Options)]
 options =
     [ Option ['i'] ["input"]
-        (ReqArg (\s opts -> opts { optInput = Just s }) "INPUT")
+        (ReqArg (\s opts -> opts { optInput = Just s }) "INPUT_FILE")
         "input file"
     , Option ['o'] ["output"]
-        (ReqArg (\s opts -> opts { optOutput = Just s }) "OUTPUT")
+        (ReqArg (\s opts -> opts { optOutput = Just s }) "OUTPUT_FILE")
         "output file"
+    , Option ['c'] ["count"]
+        (ReqArg (\d opts -> opts { optCount = read d }) "VALUE")
+        "cluster count"
+    , Option ['p'] ["precision"]
+        (ReqArg (\d opts -> opts { optCount = read d }) "VALUE")
+        "precision"
     , Option ['s'] ["separator"]
         (ReqArg (\s opts -> opts { optSeparator = s }) "SEPARATOR")
         "cells separator"
+    , Option ['m'] ["method"]
+        (ReqArg (\c opts -> opts { optSeparator = c }) "NAME")
+        "method name H or E"
     , Option ['h'] ["head"]
         (NoArg (\opts -> opts { optSkipHeadLine = True }))
         "skip head line"
@@ -58,3 +79,33 @@ main :: IO ()
 main = do
     options <- parseArgs
     putStrLn $ show options
+    if optInput options == Nothing
+    then putStrLn "There is no file to parse. Possibly you have missed -i argument. Try again please."
+    else do 
+        --contents <- fromFile $ fromJust $ optInput options
+        --putStrLn contents
+        --putStrLn $ show $ map (`getCells` ",") $ getRows contents
+        contents <- parseCSV $ parserOptions options
+        putStrLn $ show contents
+        
+        
+        
+        
+        --putStrLn $ show $ getNumbers $ head $ getRows contents
+        
+        --putStrLn $ show $ getNumbers row  ","
+    --putStrLn . show ( fromFile ( optInput options ) )
+    --csvData <- BL.readFile "test/data/butterfly.txt"
+    --putStrLn $ show csvData
+    --putStrLn ( show ( optInput options ) )
+    --putStrLn someFunc
+    --putStrLn . fromFile $ optInput options
+
+parserOptions :: Options -> ParserOptions
+parserOptions options = ParserOptions {
+    fileName            = fromJust $ optInput options
+    , separator         = optSeparator options
+    , skipHeadLine      = optSkipHeadLine options
+    , skipFirstColumn   = optSkipFirstColumn options
+    , skipLastColumn    = optSkipLastColumn options
+}
