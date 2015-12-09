@@ -9,6 +9,7 @@ import Data.Maybe ( fromMaybe, isNothing, fromJust )
 import Data.Csv
 import Lib
 import FCM.ParserCSV 
+import FCM.FCM ( randMatrix, randCenters )
 
 data Options = Options {
     optInput                :: Maybe FilePath
@@ -20,6 +21,7 @@ data Options = Options {
     , optSkipHeadLine       :: Bool
     , optSkipFirstColumn    :: Bool
     , optSkipLastColumn     :: Bool
+    , optIsRandMatrix       :: Bool
 } deriving Show
 
 defaultOptions = Options {
@@ -32,6 +34,7 @@ defaultOptions = Options {
     , optSkipHeadLine       = False
     , optSkipFirstColumn    = False
     , optSkipLastColumn     = False
+    , optIsRandMatrix       = True
 }
 
 options :: [OptDescr (Options -> Options)]
@@ -63,6 +66,9 @@ options =
     , Option ['l'] ["last"]
         (NoArg (\opts -> opts { optSkipLastColumn = True }))
         "skip last column"
+    , Option ['r'] ["rand-matrix"]
+        (NoArg (\opts -> opts { optSkipLastColumn = True }))
+        "init algorithm method: true - random generation of own, false - random generation of class centers."
     ]
 
 parseArgs :: IO Options
@@ -87,9 +93,11 @@ main = do
         --putStrLn $ show $ map (`getCells` ",") $ getRows contents
         contents <- parseCSV $ parserOptions options
         putStrLn $ show contents
-        
-        
-        
+        putStrLn ""
+        randMatrix <- randMatrix (optCount options) (length contents)
+        putStrLn $ show randMatrix
+        putStrLn ""
+        putStrLn $ show $ randCenters (optCount options) contents
         
         --putStrLn $ show $ getNumbers $ head $ getRows contents
         
