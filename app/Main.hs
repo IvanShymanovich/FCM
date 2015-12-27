@@ -4,12 +4,13 @@ import System.Console.GetOpt
 import System.Environment( getArgs, getProgName )
 import Data.Maybe ( fromMaybe, isNothing, fromJust )
 --import ParserCSV ( parseCSV )
-
+import System.IO.Error
+import Control.Exception
 -- from cassava
 import Data.Csv
 import Lib
 import FCM.ParserCSV 
-import FCM.FCM ( randMatrix, randCenters )
+import FCM.FCM
 
 data Options = Options {
     optInput                :: Maybe FilePath
@@ -67,7 +68,7 @@ options =
         (NoArg (\opts -> opts { optSkipLastColumn = True }))
         "skip last column"
     , Option ['r'] ["rand-matrix"]
-        (NoArg (\opts -> opts { optSkipLastColumn = True }))
+        (NoArg (\opts -> opts { optIsRandMatrix = True }))
         "init algorithm method: true - random generation of own, false - random generation of class centers."
     ]
 
@@ -91,23 +92,47 @@ main = do
         --contents <- fromFile $ fromJust $ optInput options
         --putStrLn contents
         --putStrLn $ show $ map (`getCells` ",") $ getRows contents
-        contents <- parseCSV $ parserOptions options
-        putStrLn $ show contents
-        putStrLn ""
-        randMatrix <- randMatrix (optCount options) (length contents)
-        putStrLn $ show randMatrix
-        putStrLn ""
-        putStrLn $ show $ randCenters (optCount options) contents
+        --contents <- parseCSV $ parserOptions options
+        --putStrLn $ show contents
+        --putStrLn ""
+        --randMatrix <- randMatrix (optCount options) (length contents)
+        --putStrLn $ show randMatrix
+        --putStrLn ""
+        --putStrLn $ show $ randCenters (optCount options) contents
         
-        --putStrLn $ show $ getNumbers $ head $ getRows contents
+        --putStrLn ""
+        --putStrLn $ show $ calculateClassCenters [[0,3,0],[1,5,0],[2,4,0]] [[0.1,0.9],[0.2,0.8],[0.3,0.7]] 
         
-        --putStrLn $ show $ getNumbers row  ","
-    --putStrLn . show ( fromFile ( optInput options ) )
-    --csvData <- BL.readFile "test/data/butterfly.txt"
-    --putStrLn $ show csvData
-    --putStrLn ( show ( optInput options ) )
-    --putStrLn someFunc
-    --putStrLn . fromFile $ optInput options
+        --putStrLn ""
+        --putStrLn $ show $ calculateMembershipMatrix euclideanDistance [[0,3,0],[1,5,0],[2,4,0]] [[0.10333333333333332,0.25166666666666665,0.0],[0.4991666666666666,2.549583333333333,0.0]]
+        
+        --putStrLn ""
+        --result <- defineClasses (fcmOptions options) contents
+        --putStrLn $ show $ result
+        
+        writeResult options `catch` catcherror
+
+catcherror :: IOError -> IO()
+catcherror ex = ioError ex
+
+writeResult :: Options -> IO()
+writeResult options 
+    | isNothing (optOutput options) = do
+        result <- doStuff options
+        putStrLn $ prettyMatrix result
+    | otherwise = do
+        result <- doStuff options
+        writeFile (fromJust (optOutput options)) (prettyMatrix result)
+
+prettyMatrix :: [[Double]] -> String
+prettyMatrix [] =  ""
+prettyMatrix (h:m) = show h ++ "\n" ++ prettyMatrix m
+
+doStuff :: Options -> IO [[Double]]
+doStuff options = do
+    contents <- parseCSV $ parserOptions options
+    result <- defineClasses (fcmOptions options) contents
+    return result
 
 parserOptions :: Options -> ParserOptions
 parserOptions options = ParserOptions {
@@ -116,4 +141,12 @@ parserOptions options = ParserOptions {
     , skipHeadLine      = optSkipHeadLine options
     , skipFirstColumn   = optSkipFirstColumn options
     , skipLastColumn    = optSkipLastColumn options
+}
+
+fcmOptions :: Options -> FCMOptions
+fcmOptions options = FCMOptions {
+    clusterCountOpt     = optCount options
+    , precisionOpt      = optPrecision options
+    , methodOpt         = optMethod options
+    , isRandMatrixOpt   = optIsRandMatrix options
 }
